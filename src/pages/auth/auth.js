@@ -1,56 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { f, auth, database } from '../../config/config';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput } from 'react-native';
 import { GoogleSignin, GoogleSigninButton, statusCodes } from 'react-native-google-signin';
+import { webClientID } from '../../config/firebaseconfig';
 
 
-function userAuth(props) {
 
-    const
-        [
-            authStep,
-            setAuthStep
-        ] = useState(0),
-        [
-            email,
-            setEmail
-        ] = useState(''),
-        [
-            password,
-            setPassword
-        ] = useState(''),
-        [
-            moveScreen,
-            setMoveScreen
-        ] = useState(false);
+export default class userAuth extends React.Component {
 
-    async function onLoginOrRegister() {
+    constructor(props) {
+        super(props);
+        this.state = {
+            authStep: 0,
+            email: '',
+            password: '',
+            moveScreen: false,
+
+        }
+    }
+    async login() {
+        //Force user to login
+        var email = this.state.email;
+        var password = this.state.password;
+        if (email != '' && password != '') {
+            try {
+                let user = await auth.signInWithEmailAndPassword(email, password); //'test@user.com', 'password'
+
+
+            } catch (error) {
+                console.log(error);
+                alert(error)
+            }
+        } else {
+            alert('email or password is empty..')
+        }
+
+    }
+
+    
+    async signUp() {
+        //Force user to login
+        var email = this.state.email;
+        var password = this.state.password;
+        if (email != '' && password != '') {
+            try {
+                let snapshot = await auth.createUserWithEmailAndPassword(email, password);
+                this.createUserObject(snapshot.user, email);
+
+
+            } catch (error) {
+                console.log(error);
+                alert(error)
+            }
+        } else {
+            alert('email or password is empty..')
+        }
+
+    }
+
+    // showLogin() {
+    //     if (this.state.moveScreen == true) {
+    //         this.props.navigation.navigate('Upload', { login: true, signUp: false });
+    //         return false;
+    //     }
+    //     this.setState({ authStep: 1 });
+    // }
+
+    // showSignUp() {
+    //     if (this.state.moveScreen == true) {
+    //         this.props.navigation.navigate('Upload', { signUp: true, login: false });
+    //         return false;
+    //     }
+    //     this.setState({ authStep: 2 })
+    // }
+
+    async onLoginOrRegister() {
         try {
 
             // Add any configuration settings here:
             GoogleSignin.configure({
-                webClientId: "390298799165-ol7dog0ng54ijfeakgkn58dp0dt1ivte.apps.googleusercontent.com",
+                webClientId: webClientID,
                 offlineAccess: true,
 
 
             });
+
+            //user = await GoogleSignin.signInSilently();
+
+
+            await GoogleSignin.hasPlayServices();
             const data = await GoogleSignin.signIn();
 
 
             if (data) {
-                console.log(data)
-                console.log(data.accessToken);
+
                 // create a new firebase credential with the token
                 const credential = f.auth.GoogleAuthProvider.credential(data.idToken, data.accessToken);
-                console.log(credential);
+
                 // login with credential
                 const currentUser = await auth.signInWithCredential(credential);
-                console.log(currentUser);
 
                 if (currentUser.additionalUserInfo.isNewUser) {
                     var uObj = {
                         name: currentUser.additionalUserInfo.profile.name,
-                        //username: `@${}`,
+
                         avatar: currentUser.additionalUserInfo.profile.picture,
                         email: currentUser.additionalUserInfo.profile.email
                     };
@@ -58,6 +111,9 @@ function userAuth(props) {
                     database.ref('users').child(currentUser.user.uid).set(uObj);
                 }
             }
+
+
+
 
             //console.info(JSON.stringify(currentUser.toJSON()));
         } catch (error) {
@@ -83,9 +139,9 @@ function userAuth(props) {
     // useEffect(() => {
     //     auth.onAuthStateChanged(user => {
     //         if (user) {
-    //             //Logged in
+    //            // const userGoogle = await GoogleSignin.signInSilently();
     //             console.log(user);
-    //             setLoggedIn(true);
+    //             //setLoggedIn(true);
     //         } else {
     //             //not logged in
     //             setLoggedIn(false);
@@ -94,68 +150,39 @@ function userAuth(props) {
     //     });
 
     // }, []);
+    render() {
+        return (
+            <View style={styles.view}>
 
-    return (
-        <View style={styles.view}>
+                {this.state.authStep == 0 ? (
 
-            {authStep == 0 ? (
+                    <View style={styles.loginView}>
+                        <Text>You are not logged in</Text>
+                        <Text>{this.props.message}</Text>
+                        <GoogleSigninButton
+                            style={{ width: 192, height: 48 }}
+                            size={GoogleSigninButton.Size.Wide}
+                            color={GoogleSigninButton.Color.Dark}
+                            onPress={this.onLoginOrRegister}
+                            disabled={false} />
 
-                <View style={styles.loginView}>
-                    <Text>You are not logged in</Text>
-                    <Text>{props.message}</Text>
-                    <GoogleSigninButton
-                        style={{ width: 192, height: 48 }}
-                        size={GoogleSigninButton.Size.Wide}
-                        color={GoogleSigninButton.Color.Dark}
-                        onPress={onLoginOrRegister}
-                        disabled={false} />
-
-                    <Text style={styles.orText}>or</Text>
-                    <TouchableOpacity
-                        onPress={() => this.showSignUp()}>
-                        <Text style={styles.signUpText}>Sign up</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                    <View style={styles.LoginSignUp}>
-                        {authStep == 1 ? (
-                            //Login
-                            <View>
-                                <TouchableOpacity onPress={() => setAuthStep(0)} style={styles.cancelButton}>
-                                    <Text style={styles.cancelText}>⬅️ Cancel</Text>
-                                </TouchableOpacity>
-                                <Text style={styles.loginHeader}>Login</Text>
-                                <Text>Email adress:</Text>
-                                <TextInput
-                                    editable={true}
-                                    keyboardType={"email-address"}
-                                    placeholder={'enter your email adress..'}
-                                    onChangeText={text => setEmail(text)}
-                                    value={email}
-                                    style={styles.emailInput} />
-
-                                <Text>Password:</Text>
-                                <TextInput
-                                    editable={true}
-                                    secureTextEntry={true}
-                                    placeholder={'enter your password..'}
-                                    onChangeText={text => setPassword(text)}
-                                    value={password}
-                                    style={styles.emailInput} />
-
-                                <TouchableOpacity
-                                    onPress={() => this.login()}
-                                    style={styles.loginButton}>
-                                    <Text style={styles.loginButtonText}>Login</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                                //Sign up
+                        <Text style={styles.orText}>or</Text>
+                        <TouchableOpacity
+                            onPress={() => this.showSignUp()}>
+                            <Text style={styles.signUpText}>Sign up</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                        <View style={styles.LoginSignUp}>
+                            {this.state.authStep == 1 ? (
+                                //Login
                                 <View>
-                                    <TouchableOpacity onPress={() => setAuthStep(0)} style={styles.cancelButton}>
+                                    <TouchableOpacity
+                                        onPress={() => this.setState({ authStep: 0 })}
+                                        style={styles.cancelButton}>
                                         <Text style={styles.cancelText}>⬅️ Cancel</Text>
                                     </TouchableOpacity>
-                                    <Text style={styles.loginHeader}>Sign up</Text>
+                                    <Text style={styles.loginHeader}>Login</Text>
                                     <Text>Email adress:</Text>
                                     <TextInput
                                         editable={true}
@@ -170,27 +197,55 @@ function userAuth(props) {
                                         editable={true}
                                         secureTextEntry={true}
                                         placeholder={'enter your password..'}
-                                        onChangeText={text => setPassword(text)}
-                                        value={password}
+                                        onChangeText={text => this.setState({ caption: text })}
+                                        value={this.state.password}
                                         style={styles.emailInput} />
 
                                     <TouchableOpacity
-                                        onPress={() => this.signUp()}
-                                        style={styles.signUpButton}>
-                                        <Text style={styles.loginButtonText}>SignUp</Text>
+                                        onPress={() => this.login()}
+                                        style={styles.loginButton}>
+                                        <Text style={styles.loginButtonText}>Login</Text>
                                     </TouchableOpacity>
                                 </View>
-                            )}
-                    </View>)}
-        </View>
-    );
+                            ) : (
+                                    //Sign up
+                                    <View>
+                                        <TouchableOpacity
+                                            onPress={() => this.setState({ authStep: 0 })}
+                                            style={styles.cancelButton}>
+                                            <Text style={styles.cancelText}>⬅️ Cancel</Text>
+                                        </TouchableOpacity>
+                                        <Text style={styles.loginHeader}>Sign up</Text>
+                                        <Text>Email adress:</Text>
+                                        <TextInput
+                                            editable={true}
+                                            keyboardType={"email-address"}
+                                            placeholder={'enter your email adress..'}
+                                            onChangeText={text => this.setState({ email: text })}
+                                            value={this.state.email}
+                                            style={styles.emailInput} />
+
+                                        <Text>Password:</Text>
+                                        <TextInput
+                                            editable={true}
+                                            secureTextEntry={true}
+                                            placeholder={'enter your password..'}
+                                            onChangeText={text => this.setState({ password: text })}
+                                            value={this.state.password}
+                                            style={styles.emailInput} />
+
+                                        <TouchableOpacity
+                                            onPress={() => this.signUp()}
+                                            style={styles.signUpButton}>
+                                            <Text style={styles.loginButtonText}>SignUp</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                        </View>)}
+            </View>
+        );
+    }
 }
-
-
-export default userAuth;
-
-
-
 
 
 

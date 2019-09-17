@@ -52,7 +52,7 @@ export default function LazyImage ({
                     style={{opacity}}
                     source={source}
                     onLoadEnd={handleAnimate}
-                    ratio={100}
+                    ratio={aspectRatio}
                     resizeMode="contain"
                 />
             
