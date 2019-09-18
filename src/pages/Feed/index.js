@@ -6,7 +6,7 @@ import { f, auth, database, storage } from '../../config/config';
 //import { formatDistanceToNow } from 'date-fns';
 import Auth from '../auth/auth';
 import styles from '../../assets/styles';
-import { uploadImage, processUpload } from '../../functions/uploadFunctions';
+import { returnUploadImage, processUpload, uniqueID } from '../../functions/uploadFunctions';
 import ImagePicker from 'react-native-image-picker';
 import LogoutButton from '../../Components/GoogleButton/Logout button'
 
@@ -73,7 +73,7 @@ export default class Pages extends React.Component {
             }
         })
     }
-    
+
     unselectImage() {
         this.setState({
             imageSelected: false,
@@ -87,23 +87,23 @@ export default class Pages extends React.Component {
         if (!this.state.uploading) {
             if (this.state.caption != '') {
                 try {
-                    console.log("caption", this.state.caption)
-                    var uploadTask = await uploadImage(this.state.file);
-                    
                     that.setState({ uploading: true });
-                    console.log("upload task", uploadTask);
+                    var imageID = uniqueID();
+                    var blob = await returnUploadImage(this.state.file, imageID);
+                    var uploadTask = storage.ref('user/' + f.auth().currentUser.uid + '/post').child(imageID).put(blob);
+
                     uploadTask.on('state_changed', snapshot => {
                         var progress = (snapshot.bytesTransferred / snapshot.totalBytes * 100).toFixed(0);
-                        console.log('Uplopad is ' + progress + '% complete');
+                        console.log('Upload is ' + progress + '% complete');
                         that.setState({ progress });
                     }, error => {
                         console.log('Error with upload -', error);
                     }, async () => {
-                        that.setState({ progress: 10 });
+                        that.setState({ progress: 100 });
                         try {
                             const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                            console.log("Download URL", downloadURL);
-                            processUpload(downloadURL);
+                            console.log("Post upload complete, URL:", downloadURL);
+                            processUpload(downloadURL, this.state.caption, imageID);
                         } catch (error) {
                             console.log(error)
                         }
@@ -111,6 +111,7 @@ export default class Pages extends React.Component {
                     });
 
                 } catch (error) {
+                    that.setState({ uploading: false });
                     console.log(error);
                 }
 

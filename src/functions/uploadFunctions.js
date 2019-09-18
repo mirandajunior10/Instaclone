@@ -5,32 +5,30 @@ function S4() {
     return Math.floor(1 + Math.random() * 0x10000).toString(16).substring(1);
 }
 
-function uniqueID() {
+export function uniqueID() {
     return S4() + S4() + '-' + S4() + '-' + S4() + '-' +
         S4() + '-' + S4() + '-' + S4() + '-' + S4();
 }
-export async function uploadImage(file) {
+export async function returnUploadImage(file, uniqueID) {
 
     var userID = f.auth().currentUser.uid;
 
-    console.log("user ID:", userID);
+    //console.log("user ID:", userID);
     var re = /(?:\.([^.]+))?$/;
     var ext = re.exec(file.path)[1];
-    console.log(ext);
+    //console.log(ext);
     try {
         const response = await fetch(file.uri);
-        console.log("fetched file", response);
+        //console.log("fetched file", response);
 
         const blob = await response.blob();
         console.log("blob", blob);
 
-        var imageUniqueID = uniqueID()
-        var filePath = imageUniqueID + "." + ext;
-        var smallFilePath = imageUniqueID + '-small.' + ext;
-        console.log("file path", filePath);
+        var smallFilePath = uniqueID + '-small.' + ext;
         console.log("Small file path", smallFilePath);
         await uploadSmallImage(file, smallFilePath);
-        return uploadTask = storage.ref('user/' + userID + '/post').child(filePath).put(blob);
+        return blob;
+      
 
     } catch (error) {
         console.log(error);
@@ -48,7 +46,6 @@ export async function processUpload(imageURL, caption, imageID) {
     var userID = f.auth().currentUser.uid;
     var date = Date.now();
     var timestamp = Math.floor(date / 1000);
-    //var imageID = this.state.imageID;
 
     //Build photo object
     //author, caption, posted,url
@@ -80,13 +77,9 @@ async function uploadSmallImage(file, smallFilePath) {
 
     var userID = f.auth().currentUser.uid;
 
-    console.log(file);
-    console.log("Small file path", smallFilePath);
     try {
         var newWidth = file.width / 10;
         var newHeight = file.height / 10;
-        console.log("width", newWidth);
-        console.log("Height", newHeight);
 
         var resized = await Resizer.createResizedImage(
             file.uri,
@@ -97,14 +90,11 @@ async function uploadSmallImage(file, smallFilePath) {
             0,
             null
         );
-        console.log(resized);
 
         const response = await fetch(resized.uri);
-        console.log("response", response);
+       
         const blob = await response.blob();
-        console.log(blob);
-        console.log("Small file path", smallFilePath);
-
+            console.log("small file path", smallFilePath);
         var uploadTask = storage.ref('user/' + userID + '/small').child(smallFilePath).put(blob);
         uploadTask.on('state_changed', snapshot => {
             var progress = (snapshot.bytesTransferred / snapshot.totalBytes * 100).toFixed(0);
@@ -114,8 +104,9 @@ async function uploadSmallImage(file, smallFilePath) {
             console.log('Error with upload -', error);
         }, async () => {
             try {
+
                 const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                console.log(downloadURL);
+                console.log("Small image upload complete, URL:", downloadURL);
             } catch (error) {
                 console.log(error)
             }
