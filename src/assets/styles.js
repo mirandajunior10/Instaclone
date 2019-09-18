@@ -77,6 +77,17 @@ export default styles = StyleSheet.create({
         paddingHorizontal: 20,
         borderRadius: 5
     },
+    upload_button: {
+        alignSelf: 'center',
+        width: 170,
+        marginHorizontal: 'auto',
+        backgroundColor: 'purple',
+        borderRadius: 5,
+        marginTop:10,
+        paddingTop:-2,
+        paddingVertical: 15,
+        paddingHorizontal: 20
+    },
     upload_button_text: {
         textAlign: 'center',
         color: 'white'

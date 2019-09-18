@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { f, auth, database } from '../../config/config';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput } from 'react-native';
 import { GoogleSignin, GoogleSigninButton, statusCodes } from 'react-native-google-signin';
@@ -18,6 +18,7 @@ export default class userAuth extends React.Component {
 
         }
     }
+
     async login() {
         //Force user to login
         var email = this.state.email;
@@ -37,7 +38,6 @@ export default class userAuth extends React.Component {
 
     }
 
-    
     async signUp() {
         //Force user to login
         var email = this.state.email;
@@ -58,35 +58,37 @@ export default class userAuth extends React.Component {
 
     }
 
-    // showLogin() {
-    //     if (this.state.moveScreen == true) {
-    //         this.props.navigation.navigate('Upload', { login: true, signUp: false });
-    //         return false;
-    //     }
-    //     this.setState({ authStep: 1 });
-    // }
+    googleConfigure() {
+        // Add any configuration settings here:
+        GoogleSignin.configure({
+            webClientId: webClientID,
+            offlineAccess: true,
 
-    // showSignUp() {
-    //     if (this.state.moveScreen == true) {
-    //         this.props.navigation.navigate('Upload', { signUp: true, login: false });
-    //         return false;
-    //     }
-    //     this.setState({ authStep: 2 })
-    // }
 
+        });
+    }
+    showSignUp() {
+        console.log("showing sign up")
+        this.setState({ authStep: 2 })
+    }
+
+    componentDidMount() {
+        this.googleConfigure();
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                //Logged in
+                //console.log("Logged in with user: ", user);
+                this.setState({ loggedIn: true });
+            } else {
+                //not logged in
+                this.setState({ loggedIn: false });
+
+            }
+        });
+    }
     async onLoginOrRegister() {
         try {
-
-            // Add any configuration settings here:
-            GoogleSignin.configure({
-                webClientId: webClientID,
-                offlineAccess: true,
-
-
-            });
-
-            //user = await GoogleSignin.signInSilently();
-
 
             await GoogleSignin.hasPlayServices();
             const data = await GoogleSignin.signIn();
@@ -103,7 +105,6 @@ export default class userAuth extends React.Component {
                 if (currentUser.additionalUserInfo.isNewUser) {
                     var uObj = {
                         name: currentUser.additionalUserInfo.profile.name,
-
                         avatar: currentUser.additionalUserInfo.profile.picture,
                         email: currentUser.additionalUserInfo.profile.email
                     };
@@ -111,11 +112,6 @@ export default class userAuth extends React.Component {
                     database.ref('users').child(currentUser.user.uid).set(uObj);
                 }
             }
-
-
-
-
-            //console.info(JSON.stringify(currentUser.toJSON()));
         } catch (error) {
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
                 // user cancelled the login flow
@@ -136,20 +132,6 @@ export default class userAuth extends React.Component {
 
     }
 
-    // useEffect(() => {
-    //     auth.onAuthStateChanged(user => {
-    //         if (user) {
-    //            // const userGoogle = await GoogleSignin.signInSilently();
-    //             console.log(user);
-    //             //setLoggedIn(true);
-    //         } else {
-    //             //not logged in
-    //             setLoggedIn(false);
-
-    //         }
-    //     });
-
-    // }, []);
     render() {
         return (
             <View style={styles.view}>

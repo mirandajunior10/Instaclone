@@ -1,16 +1,14 @@
 import React from 'react';
-import { View, FlatList, StyleSheet, Text, Image, PermissionsAndroid, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { View, FlatList, StyleSheet, Text, Image, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 //import LazyImage from '../../Components/LazyImage';
 import { f, auth, database, storage } from '../../config/config';
 //import { Post, Header, Avatar, Name, Description, Loading } from './styles';
 //import { formatDistanceToNow } from 'date-fns';
 import Auth from '../auth/auth';
-import { GoogleSignin, GoogleSigninButton, statusCodes } from 'react-native-google-signin';
-import { webClientID } from '../../config/firebaseconfig';
-//import postPreview from '../../Components/PostPreview';
 import styles from '../../assets/styles';
-//import { uploadPublish } from '../../insta_src/uploadFunctions';
+import { uploadImage, processUpload } from '../../functions/uploadFunctions';
 import ImagePicker from 'react-native-image-picker';
+import LogoutButton from '../../Components/GoogleButton/Logout button'
 
 export default class Pages extends React.Component {
 
@@ -38,28 +36,8 @@ export default class Pages extends React.Component {
         };
     }
 
-
-    async signOut() {
-        var that = this
-        GoogleSignin.configure({
-            webClientId: webClientID,
-            offlineAccess: true
-
-        });
-
-        if (auth.currentUser) {
-            await auth.signOut();
-            await GoogleSignin.signOut();
-            that.setState({ loggedIn: false })
-        }
-        else {
-            alert("Already logged out!");
-        }
-
-    }
-
     async findNewImage() {
-         var that = this;
+        var that = this;
 
         const options = {
             title: 'Select Avatar',
@@ -69,7 +47,7 @@ export default class Pages extends React.Component {
             },
         };
 
-         ImagePicker.launchImageLibrary(options, async response => {
+        ImagePicker.launchImageLibrary(options, async response => {
 
             if (response.didCancel) {
                 console.log('User cancelled image picker');
@@ -82,31 +60,74 @@ export default class Pages extends React.Component {
                 return 3;
 
             } else {
-                //console.log("response", response.path);
-                console.log("fowjfpwe");
-                that.setState({file: response})
-                //console.log("file", file);
-                console.log("response", response);
-                console.log(that.state.file);
+                that.setState({ file: response })
+                //console.log("response", response);
+                console.log("file", that.state.file);
                 that.setState({
                     imageSelected: true,
                     imageURL: "file:" + that.state.file.path
                 });
                 console.log(that.state.imageURL);
-                var imagem = await fetch(that.state.imageURL);
-                console.log(imagem);
-                
+
 
             }
         })
     }
+    
+    unselectImage() {
+        this.setState({
+            imageSelected: false,
+            file: null,
+            imageURL: ''
+        })
+    }
 
+    async uploadPublish() {
+        var that = this;
+        if (!this.state.uploading) {
+            if (this.state.caption != '') {
+                try {
+                    console.log("caption", this.state.caption)
+                    var uploadTask = await uploadImage(this.state.file);
+                    
+                    that.setState({ uploading: true });
+                    console.log("upload task", uploadTask);
+                    uploadTask.on('state_changed', snapshot => {
+                        var progress = (snapshot.bytesTransferred / snapshot.totalBytes * 100).toFixed(0);
+                        console.log('Uplopad is ' + progress + '% complete');
+                        that.setState({ progress });
+                    }, error => {
+                        console.log('Error with upload -', error);
+                    }, async () => {
+                        that.setState({ progress: 10 });
+                        try {
+                            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                            console.log("Download URL", downloadURL);
+                            processUpload(downloadURL);
+                        } catch (error) {
+                            console.log(error)
+                        }
+
+                    });
+
+                } catch (error) {
+                    console.log(error);
+                }
+
+
+            } else {
+                alert('please enter a caption...');
+            }
+        } else {
+            console.log('Ignore button tap as already uploading')
+        }
+    }
 
     componentDidMount() {
         auth.onAuthStateChanged(user => {
             if (user) {
                 //Logged in
-                //console.log(user);
+                console.log("Logged in with user: ", user);
                 this.setState({ loggedIn: true });
             } else {
                 //not logged in
@@ -130,17 +151,10 @@ export default class Pages extends React.Component {
 
     render() {
         return (
-
             <View>
                 {this.state.loggedIn == true ? (
                     <View>
-                        <Text>You are logged in</Text>
-                        <GoogleSigninButton
-                            style={{ width: 192, height: 48 }}
-                            size={GoogleSigninButton.Size.Wide}
-                            color={GoogleSigninButton.Color.Dark}
-                            onPress={this.signOut}
-                            disabled={false} />
+                        <LogoutButton />
                         {this.state.imageSelected == true ? (
                             //Check if an image is selected
                             <View style={{ flex: 1 }}>
@@ -154,12 +168,6 @@ export default class Pages extends React.Component {
                                         numberOfLines={4}
                                         onChangeText={text => this.setState({ caption: text })}
                                         style={styles.caption_textInput} />
-
-                                    <TouchableOpacity
-                                        style={styles.upload_button}
-                                        onPress={() => uploadPublish()}>
-                                        <Text style={styles.upload_button_text}>Upload & publish</Text>
-                                    </TouchableOpacity>
                                     {this.state.uploading == true ? (
                                         <View>
                                             <Text>{this.state.progress}%</Text>
@@ -174,8 +182,16 @@ export default class Pages extends React.Component {
                                         )}
                                     <Image source={{ uri: this.state.imageURL }}
                                         style={styles.imagePreview} />
-
-
+                                    <TouchableOpacity
+                                        style={styles.upload_button}
+                                        onPress={() => this.uploadPublish()}>
+                                        <Text style={styles.upload_button_text}>upload</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.upload_button}
+                                        onPress={() => this.unselectImage()}>
+                                        <Text style={styles.upload_button_text}>Cancel</Text>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
                         ) : (
@@ -212,17 +228,10 @@ export default class Pages extends React.Component {
                                 //         </Post>
                                 //     } />
                             )}
-
-
                     </View>
-
                 ) : (
-
                         <Auth message={'Please log in to do something'} />
                     )}
-
-
-
             </View>
 
         )

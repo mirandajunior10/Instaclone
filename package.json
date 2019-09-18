@@ -10,8 +10,6 @@
   },
   "dependencies": {
     "date-fns": "^2.1.0",
-    "expo-image-picker": "^6.0.0",
-    "expo-permissions": "^6.0.0",
     "firebase": "^6.6.0",
     "react": "16.8.6",
     "react-image-file-resizer": "^0.2.0",
@@ -20,6 +18,7 @@
     "react-native-gesture-handler": "^1.4.1",
     "react-native-google-signin": "^2.0.0",
     "react-native-image-picker": "^1.1.0",
+    "react-native-image-resizer": "^1.0.1",
     "react-native-reanimated": "^1.2.0",
     "react-navigation": "^4.0.0",
     "react-navigation-stack": "^1.5.1",
